@@ -1,0 +1,34 @@
+{
+  "name": "generated-cc7e8a659f53daedd78f1438",
+  "scripts": {
+    "auth:generate": "pnpx @better-auth/cli generate --config ./better-auth.config.ts --output ./src/db/auth.ts",
+    "cf-typegen": "wrangler types --strict-vars false --env-interface CloudflareBindings",
+    "dev": "wrangler dev src/index.ts",
+    "deploy": "wrangler deploy --minify src/index.ts",
+    "db:touch": "wrangler d1 execute honc-d1-database --local --command='SELECT 1'",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply honc-d1-database --local",
+    "db:migrate:prod": "ENVIRONMENT=production drizzle-kit migrate",
+    "db:setup": "npm run db:touch && npm run db:generate && npm run db:migrate",
+    "db:studio": "drizzle-kit studio",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fiberplane/hono": "0.5.2",
+    "@hono/mcp": "0.1.0",
+    "@modelcontextprotocol/sdk": "1.15.0",
+    "better-auth": "^1.2.12",
+    "drizzle-orm": "^0.44.2",
+    "hono": "4.8.4",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@better-auth/cli": "^1.2.12",
+    "@libsql/client": "0.14.0",
+    "@types/node": "^24.0.13",
+    "drizzle-kit": "0.30.4",
+    "tsx": "4.19.2",
+    "wrangler": "4.4.0"
+  },
+  "packageManager": "pnpm@10.12.2+sha512.a32540185b964ee30bb4e979e405adc6af59226b438ee4cc19f9e8773667a66d302f5bfee60a39d3cac69e35e4b96e708a71dd002b7e9359c4112a1722ac323f"
+}
