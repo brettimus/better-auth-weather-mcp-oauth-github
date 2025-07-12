@@ -120,7 +120,6 @@ dist
 
 # Wrangler / Cloudflare Workers
 .wrangler/
-worker-configuration.d.ts
 
 # Database files
 *.db
