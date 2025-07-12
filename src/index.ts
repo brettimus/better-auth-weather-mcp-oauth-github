@@ -4,11 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { z } from "zod";
 
-type Bindings = {
-  OPENWEATHER_API_KEY: string;
-};
-
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<{ Bindings: CloudflareBindings }>();
 
 // OpenWeather API response interface
 interface WeatherResponse {
@@ -121,7 +117,7 @@ function formatWeatherData(data: WeatherResponse): string {
 }
 
 // Create MCP server instance
-function createMcpServer(env: Bindings) {
+function createMcpServer(env: CloudflareBindings) {
   const server = new McpServer({ 
     name: "weather-mcp-server", 
     version: "1.0.0",

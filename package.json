@@ -28,6 +28,7 @@
     "@types/node": "^24.0.13",
     "drizzle-kit": "0.30.4",
     "tsx": "4.19.2",
+    "typescript": "^5.8.3",
     "wrangler": "4.24.3"
   },
   "packageManager": "pnpm@10.12.2+sha512.a32540185b964ee30bb4e979e405adc6af59226b438ee4cc19f9e8773667a66d302f5bfee60a39d3cac69e35e4b96e708a71dd002b7e9359c4112a1722ac323f"
