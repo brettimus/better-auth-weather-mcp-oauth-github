@@ -1,102 +1,102 @@
-## 🪿 HONC
+This is an example of an authenticated MCP server.
 
-This is a project created with the `create-honc-app` template. 
+Under the hood, it uses the better-auth ([docs](https://better-auth.com/docs/introduction) | [repo](https://github.com/better-auth/better-auth)) library to handle the auth for the MCP server.
 
-Learn more about the HONC stack on the [website](https://honc.dev) or the main [repo](https://github.com/fiberplane/create-honc-app).
+## Auth Preamble
 
-There is also an [Awesome HONC collection](https://github.com/fiberplane/awesome-honc) with further guides, use cases and examples.
+MCP Remote Auth requires an OAuth 2.1 flow to be implemented.
 
-### Getting started
-[D1](https://developers.cloudflare.com/d1/) is Cloudflare's serverless SQL database. Running HONC with a D1 database involves two key steps: first, setting up the project locally, and second, deploying it in production. You can spin up your D1 database locally using Wrangler. If you're planning to deploy your application for production use, ensure that you have created a D1 instance in your Cloudflare account.
+In this case, the Worker in this repo is both the Resource Server and the Authorization Server, but for the purposes of this app, actual user authorization is handled by the GitHub social provider (also with Better Auth).
 
-### Project structure
+If you need a refresher on OAuth concepts (like Resource Servers, Authorization Servers, PKCE, etc.), do some googlin'.
 
-```#
-├── src
-│   ├── index.ts # Hono app entry point
-│   └── db
-│       └── schema.ts # Database schema
-├── .dev.vars.example # Example .dev.vars file
-├── .prod.vars.example # Example .prod.vars file
-├── seed.ts # Optional script to seed the db
-├── drizzle.config.ts # Drizzle configuration
-├── package.json
-├── tsconfig.json # TypeScript configuration
-└── wrangler.toml # Cloudflare Workers configuration
-```
+## Setting up the app
 
-### Commands for local development
-
-Run the migrations and (optionally) seed the database:
+Copy the sample `.dev.vars-sample` file to `.dev.vars` and fill in the values.
 
 ```sh
-# this is a convenience script that runs db:touch, db:generate, db:migrate, and db:seed
-npm run db:setup
+cp .dev.vars-sample .dev.vars
 ```
 
-Run the development server:
+A few notes on the configuration values:
+
+- `BETTER_AUTH_URL` is the URL of the Better Auth server. Locally, this is `http://localhost:5342`.
+- `BETTER_AUTH_SECRET` is the secret key for the Better Auth server.
+- `GITHUB_CLIENT_ID` is the client ID of the GitHub OAuth app.
+- `GITHUB_CLIENT_SECRET` is the client secret of the GitHub OAuth app.
+
+
+**To create a GitHub OAuth app:**
+
+- Visit the GitHub docs on [creating an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) and follow the instructions to create an OAuth app.
+
+- Set the `Authorization callback URL` to `http://localhost:5342/api/auth/callback/github`.
+- Set the `Homepage URL` to `http://localhost:5342`
+- Click continue
+- Copy the Client ID to the `.dev.vars` file.
+- Create a Client Secret and copy it to the `.dev.vars` file.
+
+## Testing the OAuth Flow
+
+Boot up the model context protocol inspector:
 
 ```sh
-npm run dev
+pnpx @modelcontextprotocol/inspector
+# or
+pnpm run mcp:inspect
 ```
 
-As you iterate on the database schema, you'll need to generate a new migration file and apply it like so:
+Open the inspector, and look for the button labeled "Open Auth Settings". Should be next to some copy that says "Need to configure authentication?".
+
+Choose the "Guided Oauth Flow" and go through each step.
+
+> **NOTE** You will need to run your app with the env var `CORS_ENVIRONMENT` set to `local` for the inspector to work with the api.
+
+
+### Example Redirect URL for an MCP Client
+
+The expected flow is that our Worker will return a URL to an MCP client where it can then login and authenticate itself.
+
+```
+http://localhost:5342/api/auth/mcp/authorize?response_type=code&client_id=GvZfQIQgTMViansKDtxuWkEnmFVVfqxO&code_challenge=44wL43aOBlIthKdeqi1sMpdMpLpp1_yNQG96o3JuA6E&code_challenge_method=S256&redirect_uri=http%3A%2F%2Flocalhost%3A6274%2Foauth%2Fcallback%2Fdebug&scope=openid+profile+email&resource=http%3A%2F%2Flocalhost%3A5342%2F
+```
+
+## Quirks
+
+### Re-implementation of the GitHub sign-in
+
+In the `/login` route, we call `auth.api.signInSocial` to redirect the user to the GitHub sign-in page.
+
+This is a hack, since the routes mounted for social sign-in (which themselves use `auth.api.signInSocial`) expect POST requests from a frontend, which we cannot perform without wiring up some javascript from the client. I'm trying to avoid adding any UI to this thing.
+
+### Why so much CORS?
+
+The MCP inspector makes requests directly from the browser, so we need to set up CORS to allow the inspector to make requests to our app.
+
+In production, we would expect an MCP Client to make these requests from a server, so CORS can be handled differently.
+
+### Incorrect scope: `offline_access`
+
+The `offline_access` scope is not supported _unless_ you also send `prompt=consent` in the request, and provide a UI for the user to consent to offline storage of their information.
+
+I saw this error when I used the step-by-step OAuth debugging flow when using `pnpx @modelcontextprotocol/inspector`.
+
+## Development
 
 ```sh
-npm run db:generate
-npm run db:migrate
+pnpm i
+pnpm run dev
 ```
 
-### Commands for deployment
-
-Before deploying your worker to Cloudflare, ensure that you have a running D1 instance on Cloudflare to connect your worker to.
-
-You can create a D1 instance by navigating to the `Workers & Pages` section and selecting `D1 SQL Database.`
-
-Alternatively, you can create a D1 instance using the CLI:
+If you change the better-auth config, you might need to regenerate the auth tables in drizzle:
 
 ```sh
-npx wrangler d1 create <database-name>
-```
-
-After creating the database, update the `wrangler.toml` file with the database id.
-
-```toml
-[[d1_databases]]
-binding = "DB"
-database_name = "honc-d1-database"
-database_id = "<database-id-you-just-created>"
-migrations_dir = "drizzle/migrations"
-```
-
-Include the following information in a `.prod.vars` file:
-
-```sh
-CLOUDFLARE_D1_TOKEN="" # An API token with D1 edit permissions. You can create API tokens from your Cloudflare profile
-CLOUDFLARE_ACCOUNT_ID="" # Find your Account id on the Workers & Pages overview (upper right)
-CLOUDFLARE_DATABASE_ID="" # Find the database ID under workers & pages under D1 SQL Database and by selecting the created database
-```
-
-If you haven’t generated the latest migration files yet, run:
-```shell
-npm run db:generate
-```
-
-Afterwards, run the migration script for production:
-```shell
-npm run db:migrate:prod
-```
-
-Change the name of the project in `wrangler.toml` to something appropriate for your project:
-
-```toml
-name = "my-d1-project"
-```
-
-Finally, deploy your worker
-
-```shell 
-npm run deploy
+pnpm run auth:generate
 ```
 
 
+## TODOs
+
+- [ ] Clean up CORS code, only add CORS when the env var `CORS_ENVIRONMENT` is set to `local`
+
+- [ ] Evaluate

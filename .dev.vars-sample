@@ -1,16 +1,16 @@
+# This API uses OpenWeather, which requires an API key.
+# Note that after you generate one, it can take up to two hours to be live.
 OPENWEATHER_API_KEY=123
 
-BETTER_AUTH_SECRET=abc123
+# These are the configuration options for Better Auth.
 BETTER_AUTH_URL="http://localhost:5342"
+BETTER_AUTH_SECRET=abc123
 
-# AUTH_ISSUER:
-# "https://auth.fiberplane.com" in prod, "http://localhost:7777" in dev
-AUTH_ISSUER=http://localhost:7777      
-
-# FP_OWNER_SUB:
-# GitHub user ID of the app creator, so only they are authorized
-FP_OWNER_SUB=yourgithubusername
-
-
+# These are the configuration options for the GitHub social provider,
+# which is used to authenticate users.
 GITHUB_CLIENT_ID=abc
 GITHUB_CLIENT_SECRET=123
+
+# (optional) Set this to "local" to be able to test the OAuth flow with the MCP inspector locally.
+CORS_ENVIRONMENT=local
+
