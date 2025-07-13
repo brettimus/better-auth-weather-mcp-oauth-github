@@ -12,7 +12,7 @@ database_id = "9f837987-4004-43f9-bed4-1e7fc5552d25"
 migrations_dir = "drizzle/migrations"
 
 [vars]
-BETTER_AUTH_URL = "https://weather-mcp.honc.dev"
+BETTER_AUTH_URL = "https://weather.honc.dev"
 
 # Workers Logs
 # Docs: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
