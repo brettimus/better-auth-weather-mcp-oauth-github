@@ -4,6 +4,7 @@ import { createClient } from "@libsql/client";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { drizzle } from "drizzle-orm/libsql";
+import { mcp as mcpAuthPlugin } from "better-auth/plugins";
 
 const localDbPath = getLocalD1DB();
 
@@ -25,9 +26,22 @@ export const auth = betterAuth({
       },
     },
   },
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+    },
+  },
   database: drizzleAdapter(mockDb, {
     provider: "sqlite",
   }),
+  plugins: [
+    mcpAuthPlugin({
+      // We never hit a login page on the Resource Server,
+      // but the prop is required by the type.
+      loginPage: "/login",
+    }),
+  ],
   // You can omit runtime-specific variables like baseURL and secrets here,
   // as they are not needed for schema generation.
 });
