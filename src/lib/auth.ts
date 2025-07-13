@@ -4,6 +4,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { mcp as mcpAuthPlugin } from "better-auth/plugins";
 import { drizzle } from "drizzle-orm/d1";
+import { createMiddleware } from "hono/factory";
 // import { eq } from "drizzle-orm";
 import {
   account,
@@ -99,13 +100,27 @@ export const createAuth = (env: CloudflareBindings) => {
 
 export type Auth = ReturnType<typeof createAuth>;
 
-export async function withMcpAuth(auth: Auth, req: Request) {
+/**
+ * @NOTE - This is a re-implementation of `withMcpAuth` from the Better Auth MCP plugin,
+ *         since that function is not very Hono-y, and is better suited to use in a Next.js app.
+ */
+export const mcpAuthMiddleware = createMiddleware<{
+  Bindings: CloudflareBindings;
+}>(async (c, next) => {
+  const auth = createAuth(c.env);
   const session = await auth.api.getMcpSession({
-    headers: req.headers,
+    headers: c.req.raw.headers,
   });
-  const url = new URL(req.url);
+  const url = new URL(c.req.raw.url);
+  // TODO - Check if this construction is correct
   const baseUrl = `${url.protocol}//${url.host}`;
+  // HACK - This is a re-implementation of the MCP auth middleware, since they construct `Bearer resource_metadata`
+  //        with the host `http://localhost:3000`, which felt very incorrect.
+  //
+  //        @see: https://github.com/better-auth/better-auth/blob/7835167b8278c88dccbdfdf49ed987efe2811afd/packages/better-auth/src/plugins/mcp/index.ts
+  //
   const wwwAuthenticateValue = `Bearer resource_metadata=${baseUrl}/api/auth/.well-known/oauth-authorization-server`;
+
   if (!session) {
     return Response.json(
       {
@@ -126,4 +141,5 @@ export async function withMcpAuth(auth: Auth, req: Request) {
     );
   }
   console.log("session", session.userId);
-}
+  return next();
+});
