@@ -61,6 +61,31 @@ The expected flow is that our Worker will return a URL to an MCP client where it
 http://localhost:5342/api/auth/mcp/authorize?response_type=code&client_id=GvZfQIQgTMViansKDtxuWkEnmFVVfqxO&code_challenge=44wL43aOBlIthKdeqi1sMpdMpLpp1_yNQG96o3JuA6E&code_challenge_method=S256&redirect_uri=http%3A%2F%2Flocalhost%3A6274%2Foauth%2Fcallback%2Fdebug&scope=openid+profile+email&resource=http%3A%2F%2Flocalhost%3A5342%2F
 ```
 
+## Development
+
+After configuring `.dev.vars` (see above), install dependencies and run the migrations:
+
+```sh
+pnpm i
+pnpm db:touch
+pnpm db:generate
+pnpm db:migrate
+pnpm run dev
+```
+
+If you change any env vars, you should re-run typegen:
+
+```sh
+pnpm cf-typegen
+```
+
+If you change the better-auth config, you might need to regenerate the auth tables in Drizzle (and rerun migrations):
+
+```sh
+pnpm run auth:generate
+pnpm db:migrate
+```
+
 ## Quirks
 
 ### Re-implementation of the GitHub sign-in
@@ -81,19 +106,13 @@ The `offline_access` scope is not supported _unless_ you also send `prompt=conse
 
 I saw this error when I used the step-by-step OAuth debugging flow when using `pnpx @modelcontextprotocol/inspector`.
 
-## Development
+### Duplicate better-auth configs
 
-```sh
-pnpm i
-pnpm run dev
-```
+There is the app config in `src/lib/auth.ts`, and the auth config in `better-auth.config.ts`.
 
-If you change the better-auth config, you might need to regenerate the auth tables in drizzle:
+These technically serve different purposes but they are basically the same thing.
 
-```sh
-pnpm run auth:generate
-```
-
+I haven't yet thought about how to make them share logic in a cleaner way.
 
 ## TODOs
 
