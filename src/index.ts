@@ -1,9 +1,8 @@
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { oAuthDiscoveryMetadata } from "better-auth/plugins";
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { readResourceCors, readWriteResourceCors } from "./cors";
-import { createAuth, mcpAuthMiddleware, withMcpAuth } from "./lib/auth";
+import { createAuth, mcpAuthMiddleware } from "./lib/auth";
 import { fetchWeatherData, formatWeatherData } from "./lib/weather";
 import { createMcpServer } from "./mcp-server";
 
