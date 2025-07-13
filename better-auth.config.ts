@@ -30,6 +30,12 @@ export const auth = betterAuth({
     github: {
       clientId: process.env.GITHUB_CLIENT_ID as string,
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+      mapProfileToUser: (profile) => {
+        return {
+          // Map GitHub login to our custom field
+          githubUsername: profile.login,
+        };
+      },
     },
   },
   database: drizzleAdapter(mockDb, {
@@ -37,8 +43,6 @@ export const auth = betterAuth({
   }),
   plugins: [
     mcpAuthPlugin({
-      // We never hit a login page on the Resource Server,
-      // but the prop is required by the type.
       loginPage: "/login",
     }),
   ],

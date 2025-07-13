@@ -28,12 +28,26 @@ export const createAuth = (env: CloudflareBindings) => {
   const db = drizzle(env.DB);
 
   return betterAuth({
+    user: {
+      additionalFields: {
+        githubUsername: {
+          type: "string", // Match the type in your database
+          required: false, // Or true, if every user must have it
+        },
+      },
+    },
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema: {
         user: user,
         session: session,
         account: account,
+        /**
+         * @NOTE - We need these additional fields to support the MCP plugin
+         *
+         * It would probably be smarted to `import * as authSchema from "../db/auth";`,
+         * then we can just pass `authSchema` to the `drizzleAdapter` config.
+         */
         verification: verification,
         oauthApplication: oauthApplication,
         oauthAccessToken: oauthAccessToken,
@@ -43,6 +57,11 @@ export const createAuth = (env: CloudflareBindings) => {
       github: {
         clientId: env.GITHUB_CLIENT_ID,
         clientSecret: env.GITHUB_CLIENT_SECRET,
+        mapProfileToUser: (profile) => {
+          return {
+            githubUsername: profile.login, // Map GitHub login to our custom field
+          };
+        },
       },
     },
     plugins: [
