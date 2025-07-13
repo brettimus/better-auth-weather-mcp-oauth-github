@@ -1,4 +1,4 @@
-name = "mega-honc"
+name = "weather-mcp-with-auth"
 compatibility_date = "2025-07-09"
 compatibility_flags = [ "nodejs_compat" ]
 
@@ -7,12 +7,12 @@ port = 5342
 
 [[d1_databases]]
 binding = "DB"
-database_name = "honc-d1-database"
-database_id = "local-honc-d1-database"
+database_name = "weather-mcp-with-auth-d1-database"
+database_id = "9f837987-4004-43f9-bed4-1e7fc5552d25"
 migrations_dir = "drizzle/migrations"
 
-# [vars]
-# MY_VAR = "my-variable"
+[vars]
+BETTER_AUTH_URL = "https://weather-mcp.honc.dev"
 
 # Workers Logs
 # Docs: https://developers.cloudflare.com/workers/observability/logs/workers-logs/

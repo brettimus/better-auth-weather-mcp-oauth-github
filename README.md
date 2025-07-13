@@ -1,6 +1,10 @@
+# HONC Remote Weather MCP with Auth
+
 This is an example of an authenticated MCP server.
 
 Under the hood, it uses the better-auth ([docs](https://better-auth.com/docs/introduction) | [repo](https://github.com/better-auth/better-auth)) library to handle the auth for the MCP server.
+
+<img src="assets/logo-2.png" alt="Logo" width="200" height="200">
 
 ## Auth Preamble
 
@@ -21,10 +25,9 @@ cp .dev.vars-sample .dev.vars
 A few notes on the configuration values:
 
 - `BETTER_AUTH_URL` is the URL of the Better Auth server. Locally, this is `http://localhost:5342`.
-- `BETTER_AUTH_SECRET` is the secret key for the Better Auth server.
-- `GITHUB_CLIENT_ID` is the client ID of the GitHub OAuth app.
-- `GITHUB_CLIENT_SECRET` is the client secret of the GitHub OAuth app.
-
+- `BETTER_AUTH_SECRET` is the secret key for the Better Auth server. You can generate a random one with `openssl rand -base64 32`.
+- `GITHUB_CLIENT_ID` is the client ID of the GitHub OAuth app (see below).
+- `GITHUB_CLIENT_SECRET` is the client secret of the GitHub OAuth app (see below).
 
 **To create a GitHub OAuth app:**
 
@@ -61,15 +64,13 @@ The expected flow is that our Worker will return a URL to an MCP client where it
 http://localhost:5342/api/auth/mcp/authorize?response_type=code&client_id=GvZfQIQgTMViansKDtxuWkEnmFVVfqxO&code_challenge=44wL43aOBlIthKdeqi1sMpdMpLpp1_yNQG96o3JuA6E&code_challenge_method=S256&redirect_uri=http%3A%2F%2Flocalhost%3A6274%2Foauth%2Fcallback%2Fdebug&scope=openid+profile+email&resource=http%3A%2F%2Flocalhost%3A5342%2F
 ```
 
-## Development
+## Developing
 
 After configuring `.dev.vars` (see above), install dependencies and run the migrations:
 
 ```sh
 pnpm i
-pnpm db:touch
-pnpm db:generate
-pnpm db:migrate
+pnpm db:setup
 pnpm run dev
 ```
 
@@ -85,6 +86,18 @@ If you change the better-auth config, you might need to regenerate the auth tabl
 pnpm run auth:generate
 pnpm db:migrate
 ```
+
+
+## Deploying
+
+Create a production OAuth app
+
+```sh
+pnpm wrangler secret put BETTER_AUTH_SECRET
+pnpm wrangler secret put GITHUB_CLIENT_ID
+pnpm wrangler secret put GITHUB_CLIENT_SECRET
+```
+
 
 ## Quirks
 
