@@ -1,6 +1,7 @@
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { oAuthDiscoveryMetadata } from "better-auth/plugins";
 import { Hono } from "hono";
+import { html } from "hono/html";
 import { readResourceCors, readWriteResourceCors } from "./cors";
 import { createAuth, mcpAuthMiddleware } from "./lib/auth";
 import { fetchWeatherData, formatWeatherData } from "./lib/weather";
@@ -29,33 +30,57 @@ app.on(
 
 // Set up the `/login` route that our mcp plugin will redirect to
 app.get("/login", async (c) => {
-  console.log("raw url hitting the /login route:", c.req.raw.url);
+  return c.html(
+    html`
+<html lang="en" >
+  <head>
+    <title>Login | Weather MCP with Auth</title>
+    <meta charSet="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <script type="module">
+      import { createAuthClient } from "https://esm.sh/better-auth@1.2.12/client";
 
-  // Tell Better Auth where to come back after GitHub ↩︎
-  const callbackURL = `${new URL(c.req.url).origin}/api/auth/callback/github`;
-  const errorCallback = `${new URL(c.req.url).origin}/login/error`;
+      const authClient = createAuthClient();
+      const data = await authClient.signIn.social({
+        provider: "github"
+      });
+    </script>
+  </body>
+</html>
+`,
+  );
+});
 
-  // Server-side helper: turns our GET into the POST body signIn.social expects
-  // HACK - replicating logic from GitHub oauth provider
+app.get("/logout", async (c) => {
+  return c.html(
+    html`
+<html lang="en" >
+  <head>
+    <title>Login | Weather MCP with Auth</title>
+    <meta charSet="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <script type="module">
+      import { createAuthClient } from "https://esm.sh/better-auth@1.2.12/client";
+
+      const authClient = createAuthClient();
+      const data = await authClient.signOut();
+    </script>
+  </body>
+</html>
+`,
+  );
+});
+
+app.get("/profile", async (c) => {
   const auth = createAuth(c.env);
-  const { url } = await auth.api.signInSocial({
-    body: {
-      provider: "github",
-      callbackURL,
-      errorCallbackURL: errorCallback,
-      scopes: ["read:user", "user:email"],
-    },
-
-    // Forward cookies so Better Auth can keep its CSRF + state data
-    headers: { cookie: c.req.header("cookie") ?? "" },
+  const session = await auth.api.getSession(c.req.raw);
+  return c.json({
+    session,
   });
-
-  if (!url) {
-    return c.json({ error: "Failed to redirect to GitHub" }, 500);
-  }
-
-  // signIn.social replies  { redirect:true, url:"https://github.com/..." }
-  return c.redirect(url);
 });
 
 /**
