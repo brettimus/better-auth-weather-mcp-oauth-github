@@ -5,7 +5,7 @@ export const readResourceCors = createMiddleware<{
   Bindings: CloudflareBindings;
 }>((c, next) => {
   if (c.env.CORS_ENVIRONMENT === "local") {
-    cors({
+    return cors({
       origin: "*", // Liberal CORS for MCP clients from any origin
       allowHeaders: ["Content-Type", "Authorization"],
       allowMethods: ["GET", "OPTIONS"],
@@ -14,6 +14,7 @@ export const readResourceCors = createMiddleware<{
       credentials: false, // Set to false when using origin: "*"
     })(c, next);
   }
+
   return next();
 });
 
@@ -30,5 +31,6 @@ export const readWriteResourceCors = createMiddleware<{
       credentials: false, // Set to false when using origin: "*"
     })(c, next);
   }
+
   return next();
 });
