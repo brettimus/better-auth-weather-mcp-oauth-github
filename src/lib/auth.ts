@@ -101,8 +101,14 @@ export const createAuth = (env: CloudflareBindings) => {
 export type Auth = ReturnType<typeof createAuth>;
 
 /**
+ * Middleware to check if the MCP session is valid.
+ *
  * @NOTE - This is a re-implementation of `withMcpAuth` from the Better Auth MCP plugin,
  *         since that function is not very Hono-y, and is better suited to use in a Next.js app.
+ *
+ * @NOTE - We would have to re-implement this anyhow (I think) since the Better Auth `withMcpAuth` helper
+ *         uses the host `http://localhost:3000` in the wwwAuthenticate value, which felt very incorrect.
+ *         @see: https://github.com/better-auth/better-auth/blob/7835167b8278c88dccbdfdf49ed987efe2811afd/packages/better-auth/src/plugins/mcp/index.ts
  */
 export const mcpAuthMiddleware = createMiddleware<{
   Bindings: CloudflareBindings;
@@ -114,15 +120,10 @@ export const mcpAuthMiddleware = createMiddleware<{
   const url = new URL(c.req.raw.url);
   // TODO - Check if this construction is correct
   const baseUrl = `${url.protocol}//${url.host}`;
-  // HACK - This is a re-implementation of the MCP auth middleware, since they construct `Bearer resource_metadata`
-  //        with the host `http://localhost:3000`, which felt very incorrect.
-  //
-  //        @see: https://github.com/better-auth/better-auth/blob/7835167b8278c88dccbdfdf49ed987efe2811afd/packages/better-auth/src/plugins/mcp/index.ts
-  //
   const wwwAuthenticateValue = `Bearer resource_metadata=${baseUrl}/api/auth/.well-known/oauth-authorization-server`;
 
   if (!session) {
-    return Response.json(
+    return c.json(
       {
         jsonrpc: "2.0",
         error: {
