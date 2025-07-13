@@ -15,6 +15,15 @@ import {
   verification,
 } from "../db/schema";
 
+/**
+ * Create a Better Auth instance.
+ * - Has a `socialProviders` config for GitHub
+ * - Has a `plugins` config for the MCP plugin, which redirects to the `/login` route
+ * - Disables email/password auth
+ *
+ * @TODO - Determine the proper cookie prefix, if any
+ * @TODO - Investigate usage of OIDC consent screen
+ */
 export const createAuth = (env: CloudflareBindings) => {
   const db = drizzle(env.DB);
 
@@ -85,9 +94,8 @@ export const createAuth = (env: CloudflareBindings) => {
     },
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
-    // TODO - No cookies? IDK?
     advanced: {
-      cookiePrefix: "some-fixed-random-prefix-123",
+      cookiePrefix: "wmcp",
     },
     logger: {
       level: "debug", // Options: "error", "warn", "info", "debug"
