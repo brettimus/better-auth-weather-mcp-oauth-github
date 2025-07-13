@@ -107,13 +107,21 @@ pnpm db:migrate:prod
 
 ## Quirks
 
-### GitHub redirect URI `/api/auth/callback/github` returns a JSON object with the redirect
+### `/login` route
 
-> **NOTE** The solution here is to implement some client-side javascript to handle the flow. The `/login` route should basically load Better Auth's client, and then use *that* to sign in with GitHub. That way, we won't have to implement the `/login` route in the hacky way we do now.
+We need to have some client-side javascript to handle parts of the login flow (this is particular to using Better Auth's routes).
 
-Since GitHub is a general OAuth provider the way that Better Auth implements it, this means it won't redirect to the URL we want it to, instead it just returns JSON with the redirect URL like so (since it assumes the client is some javascript in a browser)
+That's what you see in the html rendered by the `/login` route.
 
-For instance, connecting to this MCP server from Cursor will result in a redirect like this:
+**_Why?_**
+
+First, if we handle `login` through a `c.redirect` call, then we end up having to duplicate Better Auth's logic for talking to GitHub on a separate route.
+
+Second, because we will end up redirecting at some point to the GitHub OAuth app's redirect URI, `/api/auth/callback/github`, which returns a JSON object with the redirect url.
+
+Since GitHub is a general OAuth provider (the way that Better Auth implements it), this means that route won't redirect to the URL we want it to, instead it just returns JSON with the redirect URL like so (since it assumes the client is some javascript in a browser)
+
+For instance, connecting to this MCP server from Cursor would result in a redirect that lands on a page that just renders JSON like this:
 
 ```json
 {
@@ -122,13 +130,7 @@ For instance, connecting to this MCP server from Cursor will result in a redirec
 }
 ```
 
-In effect, this means that the user will have to copy-paste the link, which I don't like. 
-
-### Re-implementation of the GitHub sign-in
-
-In the `/login` route, we call `auth.api.signInSocial` to redirect the user to the GitHub sign-in page.
-
-This is a hack, since the routes mounted for social sign-in (which themselves use `auth.api.signInSocial`) expect POST requests from a frontend, which we cannot perform without wiring up some javascript from the client. I'm trying to avoid adding any UI to this thing.
+In effect, this means that the user would have to copy-paste the link, which is a nooooo goooooood. 
 
 ### Why so much CORS?
 
@@ -136,11 +138,13 @@ The MCP inspector makes requests directly from the browser, so we need to set up
 
 In production, we would expect an MCP Client to make these requests from a server, so CORS can be handled differently.
 
-### Incorrect scope: `offline_access`
+### Incorrect scope: `offline_access` (_only happened with the mcp inspector_)
 
 The `offline_access` scope is not supported _unless_ you also send `prompt=consent` in the request, and provide a UI for the user to consent to offline storage of their information.
 
 I saw this error when I used the step-by-step OAuth debugging flow when using `pnpx @modelcontextprotocol/inspector`.
+
+I didn't see it when connecting to the MCP server from Cursor or Claude Code.
 
 ### Duplicate better-auth configs
 
