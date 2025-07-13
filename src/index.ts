@@ -1,4 +1,3 @@
-import { createFiberplane, createOpenAPISpec } from "@fiberplane/hono";
 import { StreamableHTTPTransport } from "@hono/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { oAuthDiscoveryMetadata } from "better-auth/plugins";
@@ -6,125 +5,9 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { z } from "zod";
 import { createAuth, withMcpAuth } from "./lib/auth";
+import { fetchWeatherData, formatWeatherData } from "./lib/weather";
 
 const app = new Hono<{ Bindings: CloudflareBindings }>();
-
-// OpenWeather API response interface
-interface WeatherResponse {
-  coord: {
-    lon: number;
-    lat: number;
-  };
-  weather: Array<{
-    id: number;
-    main: string;
-    description: string;
-    icon: string;
-  }>;
-  base: string;
-  main: {
-    temp: number;
-    feels_like: number;
-    temp_min: number;
-    temp_max: number;
-    pressure: number;
-    humidity: number;
-  };
-  visibility: number;
-  wind: {
-    speed: number;
-    deg: number;
-  };
-  clouds: {
-    all: number;
-  };
-  dt: number;
-  sys: {
-    type: number;
-    id: number;
-    country: string;
-    sunrise: number;
-    sunset: number;
-  };
-  timezone: number;
-  id: number;
-  name: string;
-  cod: number;
-}
-
-// Function to fetch weather data from OpenWeather API
-async function fetchWeatherData(
-  location: string,
-  apiKey: string,
-): Promise<WeatherResponse> {
-  const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(location)}&appid=${apiKey}&units=metric`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error(`Location "${location}" not found`);
-    }
-    if (response.status === 401) {
-      throw new Error("Invalid OpenWeather API key");
-    }
-    if (response.status === 429) {
-      throw new Error("OpenWeather API rate limit exceeded");
-    }
-    throw new Error(`OpenWeather API error: ${response.status}`);
-  }
-
-  return await response.json();
-}
-
-// Function to format weather data for MCP response
-function formatWeatherData(data: WeatherResponse): string {
-  const weather = data.weather[0];
-  const main = data.main;
-  const wind = data.wind;
-
-  return JSON.stringify(
-    {
-      location: {
-        name: data.name,
-        country: data.sys.country,
-        coordinates: {
-          latitude: data.coord.lat,
-          longitude: data.coord.lon,
-        },
-      },
-      current: {
-        temperature: {
-          current: Math.round(main.temp),
-          feels_like: Math.round(main.feels_like),
-          min: Math.round(main.temp_min),
-          max: Math.round(main.temp_max),
-          unit: "°C",
-        },
-        conditions: {
-          main: weather.main,
-          description: weather.description,
-        },
-        humidity: main.pressure,
-        wind: {
-          speed: wind.speed,
-          direction: wind.deg,
-          unit: "m/s",
-        },
-        pressure: main.pressure,
-        visibility: data.visibility,
-        timestamp: new Date(data.dt * 1000).toISOString(),
-      },
-    },
-    null,
-    2,
-  );
-}
 
 // Create MCP server instance
 function createMcpServer(env: CloudflareBindings) {
@@ -184,6 +67,24 @@ app.get("/", (c) => {
   );
 });
 
+// OPTIONS + cors is necessary for auth from the mcp inspector
+app.on(
+  ["POST", "GET", "OPTIONS"],
+  "/api/auth/**",
+  cors({
+    origin: "*", // Liberal CORS for MCP clients from any origin
+    allowHeaders: ["Content-Type", "Authorization"],
+    allowMethods: ["GET", "POST", "OPTIONS"],
+    exposeHeaders: ["Content-Length"],
+    maxAge: 600,
+    credentials: false, // Set to false when using origin: "*"
+  }),
+  (c) => {
+    const auth = createAuth(c.env);
+    return auth.handler(c.req.raw);
+  },
+);
+
 app.get("/login", async (c) => {
   console.log("login", c.req.raw.url);
   const auth = createAuth(c.env);
@@ -211,34 +112,6 @@ app.get("/login", async (c) => {
 
   // signIn.social replies  { redirect:true, url:"https://github.com/..." }
   return c.redirect(url);
-});
-
-// OPTIONS + cors is necessary for auth from the mcp inspector
-app.on(
-  ["POST", "GET", "OPTIONS"],
-  "/api/auth/**",
-  cors({
-    origin: "*", // Liberal CORS for MCP clients from any origin
-    allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "POST", "OPTIONS"],
-    exposeHeaders: ["Content-Length"],
-    maxAge: 600,
-    credentials: false, // Set to false when using origin: "*"
-  }),
-  (c) => {
-    const auth = createAuth(c.env);
-    return auth.handler(c.req.raw);
-  },
-);
-
-// Health check endpoint
-app.get("/health", (c) => {
-  return c.json({
-    status: "healthy",
-    service: "weather-mcp-server",
-    version: "1.0.0",
-    timestamp: new Date().toISOString(),
-  });
 });
 
 app.all(
@@ -353,34 +226,14 @@ app.get("/api/weather/:location", async (c) => {
   }
 });
 
-/**
- * Serve a simplified api specification for your API
- * As of writing, this is just the list of routes and their methods.
- */
-app.get("/openapi.json", (c) => {
-  return c.json(
-    createOpenAPISpec(app, {
-      info: {
-        title: "Weather MCP Server",
-        version: "1.0.0",
-        description:
-          "Model Context Protocol server providing weather data functionality",
-      },
-    }),
-  );
+// Health check endpoint
+app.get("/health", (c) => {
+  return c.json({
+    status: "healthy",
+    service: "weather-mcp-server",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
+  });
 });
-
-/**
- * Mount the Fiberplane api explorer to be able to make requests against your API.
- *
- * Visit the explorer at `/fp`
- */
-app.use(
-  "/fp/*",
-  createFiberplane({
-    app,
-    openapi: { url: "/openapi.json" },
-  }),
-);
 
 export default app;

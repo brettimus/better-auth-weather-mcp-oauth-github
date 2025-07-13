@@ -17,7 +17,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fiberplane/hono": "0.5.2",
     "@hono/mcp": "0.1.0",
     "@modelcontextprotocol/sdk": "1.15.0",
     "better-auth": "^1.2.12",
