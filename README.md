@@ -90,16 +90,39 @@ pnpm db:migrate
 
 ## Deploying
 
-Create a production OAuth app
+Create a production GitHub OAuth app, and set the following secrets:
 
 ```sh
+pnpm wrangler secret put OPENWEATHERMAP_API_KEY
 pnpm wrangler secret put BETTER_AUTH_SECRET
 pnpm wrangler secret put GITHUB_CLIENT_ID
 pnpm wrangler secret put GITHUB_CLIENT_SECRET
 ```
 
+Then run the migrations:
+
+```sh
+pnpm db:migrate:prod
+```
 
 ## Quirks
+
+### GitHub redirect URI `/api/auth/callback/github` returns a JSON object with the redirect
+
+> **NOTE** The solution here is to implement some client-side javascript to handle the flow. The `/login` route should basically load Better Auth's client, and then use *that* to sign in with GitHub. That way, we won't have to implement the `/login` route in the hacky way we do now.
+
+Since GitHub is a general OAuth provider the way that Better Auth implements it, this means it won't redirect to the URL we want it to, instead it just returns JSON with the redirect URL like so (since it assumes the client is some javascript in a browser)
+
+For instance, connecting to this MCP server from Cursor will result in a redirect like this:
+
+```json
+{
+"redirect": true,
+"url": "cursor://anysphere.cursor-retrieval/oauth/user-Weather/callback?code=mycode&state=undefined"
+}
+```
+
+In effect, this means that the user will have to copy-paste the link, which I don't like. 
 
 ### Re-implementation of the GitHub sign-in
 
