@@ -32,7 +32,7 @@ app.on(
 app.get("/login", async (c) => {
   return c.html(
     html`
-<html lang="en" >
+<html lang="en">
   <head>
     <title>Login | Weather MCP with Auth</title>
     <meta charSet="utf-8" />
@@ -56,7 +56,7 @@ app.get("/login", async (c) => {
 app.get("/logout", async (c) => {
   return c.html(
     html`
-<html lang="en" >
+<html lang="en">
   <head>
     <title>Login | Weather MCP with Auth</title>
     <meta charSet="utf-8" />
