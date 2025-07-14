@@ -119,7 +119,31 @@ export const createAuth = (env: CloudflareBindings) => {
     logger: {
       level: "debug", // Options: "error", "warn", "info", "debug"
       log: (level, message, ...args) => {
-        console.log(`[BetterAuth][${level}]`, message, ...args);
+        const serializedArgs = args.map((arg) => {
+          if (typeof arg === "object" && arg !== null) {
+            try {
+              // Create a Set to track visited objects and prevent circular references
+              const seen = new WeakSet();
+              return JSON.stringify(
+                arg,
+                (_key, value) => {
+                  if (typeof value === "object" && value !== null) {
+                    if (seen.has(value)) {
+                      return "[Circular Reference]";
+                    }
+                    seen.add(value);
+                  }
+                  return value;
+                },
+                2,
+              );
+            } catch (error) {
+              return `[Object serialization failed: ${error instanceof Error ? error.message : "Unknown error"}]`;
+            }
+          }
+          return arg;
+        });
+        console.log(`[BetterAuth][${level}]`, message, ...serializedArgs);
       },
     },
   });
