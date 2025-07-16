@@ -71,6 +71,7 @@ export const createAuth = (env: CloudflareBindings) => {
       //        The end result is that you do not redirect back to the MCP Client, and instead the browser
       //        will render a JSON response including the redirect location.
       //        This middleware fixes that by forcing the response to be a redirect
+      //        @see: https://github.com/better-auth/better-auth/blob/7364c169f6de0eec4f095112047e23480b240078/packages/better-auth/src/plugins/mcp/index.ts#L142-L154
       {
         id: "fp-mcp-fix",
         hooks: {
