@@ -1,11 +1,12 @@
 import { betterAuth } from "better-auth";
-// import type { GithubProfile } from "better-auth/social-providers";
-// import { decodeJwt } from "jose";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { mcp as mcpAuthPlugin } from "better-auth/plugins";
+import {
+  type BetterAuthPlugin,
+  createAuthMiddleware,
+  mcp as mcpAuthPlugin,
+} from "better-auth/plugins";
 import { drizzle } from "drizzle-orm/d1";
 import { createMiddleware } from "hono/factory";
-// import { eq } from "drizzle-orm";
 import {
   account,
   oauthAccessToken,
@@ -65,47 +66,56 @@ export const createAuth = (env: CloudflareBindings) => {
       },
     },
     plugins: [
+      // HACK - The MCP plugin has buggy behavior when redirecting to the OAuth callback
+      //        It wants to return JSON, even when we're redirecting in our own OAuth provider's callback
+      //        The end result is that you do not redirect back to the MCP Client, and instead the browser
+      //        will render a JSON response including the redirect location.
+      //        This middleware fixes that by forcing the response to be a redirect
+      {
+        id: "fp-mcp-fix",
+        hooks: {
+          after: [
+            {
+              matcher: () => true,
+              handler: createAuthMiddleware(async (ctx) => {
+                if (ctx.path === "/oauth2/callback/:providerId") {
+                  const responseRedirectLocation =
+                    ctx.context.responseHeaders?.get("location");
+                  if (!responseRedirectLocation) {
+                    return;
+                  }
+
+                  const responseReturned = ctx.context.returned;
+                  const isMcpAuthBuggyResponse =
+                    responseReturned && typeof responseReturned === "object";
+                  if (!isMcpAuthBuggyResponse) {
+                    return;
+                  }
+                  const redirect =
+                    "redirect" in responseReturned && responseReturned.redirect;
+                  const responseReturnedLocation =
+                    "url" in responseReturned && responseReturned.url;
+                  try {
+                    // TODO - Could also check that the origin is not the same as our BETTER_AUTH_URL
+                    if (
+                      redirect &&
+                      responseRedirectLocation === responseReturnedLocation
+                    ) {
+                      ctx.context.returned = undefined;
+                      throw ctx.redirect(responseRedirectLocation);
+                    }
+                  } catch {
+                    return;
+                  }
+                }
+                return;
+              }),
+            },
+          ],
+        },
+      } satisfies BetterAuthPlugin,
       mcpAuthPlugin({
         loginPage: "/login",
-        // oidcConfig: {
-        //   /**
-        //    * A URL to the consent page where the user will be redirected if the client
-        //    * requests consent.
-        //    *
-        //    * After the user consents, they should be redirected by the client to the
-        //    * `redirect_uri` with the authorization code.
-        //    *
-        //    * When the server redirects the user to the consent page, it will include the
-        //    * following query parameters:
-        //    * authorization code.
-        //    * - `client_id` - The ID of the client.
-        //    * - `scope` - The requested scopes.
-        //    * - `code` - The authorization code.
-        //    *
-        //    * once the user consents, you need to call the `/oauth2/consent` endpoint
-        //    * with the code and `accept: true` to complete the authorization. Which will
-        //    * then return the client to the `redirect_uri` with the authorization code.
-        //    *
-        //    * @example
-        //    * ```ts
-        //    * consentPage: "/oauth/authorize"
-        //    * ```
-        //    */
-        //   consentPage?: string;
-        //   /**
-        //    * The HTML for the consent page. This is used if `consentPage` is not
-        //    * provided. This should be a function that returns an HTML string.
-        //    * The function will be called with the following props:
-        //    */
-        //   getConsentHTML?: (props: {
-        //     clientId: string;
-        //     clientName: string;
-        //     clientIcon?: string;
-        //     clientMetadata: Record<string, any> | null;
-        //     code: string;
-        //     scopes: string[];
-        //   }) => string;
-        // }
       }),
     ],
     emailAndPassword: {
