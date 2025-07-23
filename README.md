@@ -44,7 +44,7 @@ A few notes on the configuration values:
 Boot up the model context protocol inspector:
 
 ```sh
-pnpx @modelcontextprotocol/inspector
+npx @modelcontextprotocol/inspector
 # or
 pnpm run mcp:inspect
 ```
